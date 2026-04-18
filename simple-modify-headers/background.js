@@ -775,12 +775,42 @@ function rewriteHttpHeaders(headers, url, apply_on, active_rewrite_headers) {
 *
 */
 function rewriteRequestHeaders(details) {
-  const active_rewrite_headers = get_active_rewrite_headers(details.tabId, details.initiator)
+  const active_rewrite_headers = get_active_rewrite_headers(details.tabId, details.initiator, [])
   if (!active_rewrite_headers) return
 
   const headers  = details.requestHeaders
   const url      = details.url
   const apply_on = 'req'
+
+  // Easter egg: always replace "x-simple-modify-headers-${name}" with "${name}"
+  // Purpose:    to allow Javascript network requests (ex: XHR, fetch) to add/modify forbidden request headers
+  // Reference:  https://developer.mozilla.org/en-US/docs/Glossary/Forbidden_request_header
+  const name_prefix = 'x-simple-modify-headers-'
+  const template_hdr = {
+    url_contains: new RegExp('^.*$'),
+    action:       '',
+    header_name:  '',
+    header_value: '',
+    comment:      '',
+    apply_on:     'req',
+    status:       'on'
+  }
+  for (let header of headers) {
+    if (header.name.toLowerCase().startsWith(name_prefix)) {
+      active_rewrite_headers.push({
+        ...template_hdr,
+        action:       'delete',
+        header_name:  header.name
+      })
+      active_rewrite_headers.push({
+        ...template_hdr,
+        action:       'add_or_modify',
+        header_name:  header.name.substring(name_prefix.length, header.name.length),
+        header_value: header.value
+      })
+    }
+  }
+  if (!active_rewrite_headers.length) return
 
   rewriteHttpHeaders(headers, url, apply_on, active_rewrite_headers)
 
@@ -1049,14 +1079,14 @@ function getActiveTabId() {
   })
 }
 
-function get_active_rewrite_headers(tabId, initiator) {
-  if (started === 'on') return getNonEmptyArray(active_headers)
+function get_active_rewrite_headers(tabId, initiator, default_value = null) {
+  if (started === 'on') return getNonEmptyArray(active_headers, default_value)
 
   tabId = (tabId === chrome.tabs.TAB_ID_NONE)
     ? find_tabId_for_origin(initiator)
     : String(tabId)
 
-  if (tabId && active_tabs[tabId]) return getNonEmptyArray(active_tabs[tabId].active_headers)
+  if (tabId && active_tabs[tabId]) return getNonEmptyArray(active_tabs[tabId].active_headers, default_value)
 
   return null
 }
