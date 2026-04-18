@@ -1,7 +1,7 @@
 {
   "name": "Simple Modify Headers - Extended",
   "description": "Rewrites HTTP request/response headers based on a rules table.",
-  "version": "6.2.0",
+  "version": "6.3.0",
   "manifest_version": 2,
   "icons": {
     "32": "icons/modify-32-black.png",
