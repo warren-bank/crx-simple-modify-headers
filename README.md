@@ -35,6 +35,22 @@
   * now:
     - imported rules will __append__ to the pre-existing set of rules
 - "Parameters" _button_ is renamed to "Settings"
+- Automatic behavior
+  1. always replace `x-simple-modify-headers-${name}` request headers with `${name}`
+     - conditions:
+       * the extension is either enabled globally, or enabled for the current browser tab
+     - purpose:
+       * to allow Javascript network requests (ex: XHR, fetch) to add/modify [forbidden request headers](https://developer.mozilla.org/en-US/docs/Glossary/Forbidden_request_header)
+     - example:
+       ```javascript
+         // specify the "Referer" request header:
+         fetch(
+           'http://httpbin.org/headers',
+           {headers: {"x-simple-modify-headers-referer": "http://foo.bar.example.com/baz"}}
+         )
+         .then(res => res.json())
+         .then(console.log)
+       ```
 
 - - - -
 
