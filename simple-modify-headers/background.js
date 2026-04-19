@@ -782,9 +782,22 @@ function rewriteRequestHeaders(details) {
   const url      = details.url
   const apply_on = 'req'
 
-  // Easter egg: always replace "x-simple-modify-headers-${name}" with "${name}"
-  // Purpose:    to allow Javascript network requests (ex: XHR, fetch) to add/modify forbidden request headers
-  // Reference:  https://developer.mozilla.org/en-US/docs/Glossary/Forbidden_request_header
+  modify_active_rewrite_headers_from_custom_req_headers(active_rewrite_headers, headers)
+  modify_active_rewrite_headers_from_cors_safelisted_req_header(active_rewrite_headers, headers)
+  if (!active_rewrite_headers.length) return
+
+  rewriteHttpHeaders(headers, url, apply_on, active_rewrite_headers)
+
+  return { requestHeaders: headers }
+}
+
+function modify_active_rewrite_headers_from_custom_req_headers(active_rewrite_headers, headers) {
+  // Automatic:   Always replace "x-simple-modify-headers-${name}" with "${name}"
+  // Purpose:     To allow Javascript network requests (ex: XHR, fetch) to add/modify forbidden request headers
+  // Implication: These custom HTTP request headers trigger a CORS preflight OPTIONS request
+  // References:  https://developer.mozilla.org/en-US/docs/Glossary/Forbidden_request_header
+  //              https://developer.mozilla.org/en-US/docs/Glossary/Preflight_request
+  //              https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Access-Control-Request-Headers
   const name_prefix = 'x-simple-modify-headers-'
   const template_hdr = {
     url_contains: new RegExp('^.*$'),
@@ -795,6 +808,7 @@ function rewriteRequestHeaders(details) {
     apply_on:     'req',
     status:       'on'
   }
+
   for (let header of headers) {
     if (header.name.toLowerCase().startsWith(name_prefix)) {
       active_rewrite_headers.push({
@@ -810,11 +824,84 @@ function rewriteRequestHeaders(details) {
       })
     }
   }
-  if (!active_rewrite_headers.length) return
+}
 
-  rewriteHttpHeaders(headers, url, apply_on, active_rewrite_headers)
+function modify_active_rewrite_headers_from_cors_safelisted_req_header(active_rewrite_headers, headers) {
+  // Automatic:   Add headers embedded into the value of the header: "Content-Language"
+  // Purpose:     To allow Javascript network requests (ex: XHR, fetch) to add/modify forbidden request headers
+  // Implication: This CORS safelisted HTTP request header does NOT trigger a CORS preflight OPTIONS request
+  // References:  https://developer.mozilla.org/en-US/docs/Glossary/Forbidden_request_header
+  //              https://developer.mozilla.org/en-US/docs/Glossary/CORS-safelisted_request_header
+  //              https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Language
+  const header_names = ["accept-charset", "accept-encoding", "access-control-request-headers", "access-control-request-method", "access-control-request-private-network", "connection", "content-length", "cookie", "date", "dnt", "expect", "host", "keep-alive", "origin", "referer", "set-cookie", "te", "trailer", "transfer-encoding", "upgrade", "user-agent", "via", "x-http-method", "x-http-method-override", "x-method-override"]
+  const value_regex  = /^SMH;([\d]+)=([A-Za-z0-9\-\*]*)[=]*$/
+  const template_hdr = {
+    url_contains: new RegExp('^.*$'),
+    action:       '',
+    header_name:  '',
+    header_value: '',
+    comment:      '',
+    apply_on:     'req',
+    status:       'on'
+  }
 
-  return { requestHeaders: headers }
+  const decode_name = (val) => {
+    try {
+      const header_name_index = parseInt(val, 10)
+      return header_names[header_name_index]
+    }
+    catch(e) {
+      return null
+    }
+  }
+  const decode_value = (val) => {
+    try {
+      val = val.replace(/[\-]/g, '+').replace(/[\*]/g, '/')
+      return atob(val)
+    }
+    catch(e) {
+      return null
+    }
+  }
+
+  for (let header of headers) {
+    if (header.name.toLowerCase() === 'content-language') {
+      const all_header_values = header.value.split(',').map(val => val.trim())
+      const new_header_values = []
+
+      for (let header_value of all_header_values) {
+        const match = value_regex.exec(header_value)
+
+        if (match) {
+          const header_name  = decode_name( match[1])
+          const header_value = decode_value(match[2])
+
+          active_rewrite_headers.push({
+            ...template_hdr,
+            action: 'add_or_modify',
+            header_name,
+            header_value
+          })
+        }
+        else {
+          new_header_values.push(header_value)
+        }
+      }
+
+      if (new_header_values.length) {
+        header.value = new_header_values.join(',')
+      }
+      else {
+        active_rewrite_headers.push({
+          ...template_hdr,
+          action:      'delete',
+          header_name: header.name
+        })
+      }
+
+      break
+    }
+  }
 }
 
 /*
