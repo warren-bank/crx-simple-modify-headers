@@ -833,8 +833,13 @@ function modify_active_rewrite_headers_from_cors_safelisted_req_header(active_re
   // References:  https://developer.mozilla.org/en-US/docs/Glossary/Forbidden_request_header
   //              https://developer.mozilla.org/en-US/docs/Glossary/CORS-safelisted_request_header
   //              https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Language
-  const header_names = ["accept-charset", "accept-encoding", "access-control-request-headers", "access-control-request-method", "access-control-request-private-network", "connection", "content-length", "cookie", "date", "dnt", "expect", "host", "keep-alive", "origin", "referer", "set-cookie", "te", "trailer", "transfer-encoding", "upgrade", "user-agent", "via", "x-http-method", "x-http-method-override", "x-method-override"]
-  const value_regex  = /^SMH;([\d]+)=([A-Za-z0-9\-\*]*)[=]*$/
+  const enum_forbidden_header_names = ["accept-charset", "accept-encoding", "access-control-request-headers", "access-control-request-method", "access-control-request-private-network", "connection", "content-length", "cookie", "date", "dnt", "expect", "host", "keep-alive", "origin", "referer", "set-cookie", "te", "trailer", "transfer-encoding", "upgrade", "user-agent", "via", "x-http-method", "x-http-method-override", "x-method-override"]
+  const cors_safelisted_header_name = 'content-language'
+  const base64_regex = '[A-Za-z0-9\\-\\*]'
+  const value_regexs = {
+    name_enum:  new RegExp(`^SMH;([\\d]+)=(${base64_regex}*)[=]*$`),
+    name_value: new RegExp(`^SMH;(${base64_regex}+)=(${base64_regex}*)[=]*$`)
+  }
   const template_hdr = {
     url_contains: new RegExp('^.*$'),
     action:       '',
@@ -845,16 +850,16 @@ function modify_active_rewrite_headers_from_cors_safelisted_req_header(active_re
     status:       'on'
   }
 
-  const decode_name = (val) => {
+  const decode_name_enum = (val) => {
     try {
-      const header_name_index = parseInt(val, 10)
-      return header_names[header_name_index]
+      const enum_forbidden_header_name_index = parseInt(val, 10)
+      return enum_forbidden_header_names[enum_forbidden_header_name_index]
     }
     catch(e) {
       return null
     }
   }
-  const decode_value = (val) => {
+  const decode_base64_value = (val) => {
     try {
       val = val.replace(/[\-]/g, '+').replace(/[\*]/g, '/')
       return atob(val)
@@ -865,22 +870,37 @@ function modify_active_rewrite_headers_from_cors_safelisted_req_header(active_re
   }
 
   for (let header of headers) {
-    if (header.name.toLowerCase() === 'content-language') {
+    if (header.name.toLowerCase() === cors_safelisted_header_name) {
       const all_header_values = header.value.split(',').map(val => val.trim())
       const new_header_values = []
 
       for (let header_value of all_header_values) {
-        const match = value_regex.exec(header_value)
+        let decoded_header_name, decoded_header_value
 
-        if (match) {
-          const header_name  = decode_name( match[1])
-          const header_value = decode_value(match[2])
+        if (!decoded_header_name) {
+          const match = value_regexs.name_enum.exec(header_value)
 
+          if (match) {
+            decoded_header_name  = decode_name_enum(match[1])
+            decoded_header_value = decode_base64_value(match[2])
+          }
+        }
+
+        if (!decoded_header_name) {
+          const match = value_regexs.name_value.exec(header_value)
+
+          if (match) {
+            decoded_header_name  = decode_base64_value(match[1])
+            decoded_header_value = decode_base64_value(match[2])
+          }
+        }
+
+        if (decoded_header_name) {
           active_rewrite_headers.push({
             ...template_hdr,
-            action: 'add_or_modify',
-            header_name,
-            header_value
+            action:       'add_or_modify',
+            header_name:  decoded_header_name,
+            header_value: decoded_header_value
           })
         }
         else {
