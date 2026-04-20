@@ -1,6 +1,9 @@
 // --------------------------------------------------------------
-// Mock methods in config.js that use the Storage API,
-// as "chrome.storage" is not available outside of webextension
+// Mock methods in common.js that use the Storage API;
+// "chrome.storage" is not available outside of webextension.
+//
+// Mock methods in config.js that use the Runtime API;
+// "chrome.runtime" is not available outside of webextension.
 // --------------------------------------------------------------
 
 const mocks = {
@@ -27,6 +30,12 @@ const mocks = {
 
     if (typeof callback_function === 'function')
       callback_function()
+  }
+}
+
+globalThis.chrome = {
+  runtime: {
+    sendMessage: function() {}
   }
 }
 
