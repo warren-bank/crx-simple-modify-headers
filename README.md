@@ -3,39 +3,67 @@
 ## Forked from
 
 [SimpleModifyHeaders](https://github.com/didierfred/SimpleModifyHeaders)
-- version: [1.6.7](https://github.com/didierfred/SimpleModifyHeaders/releases/tag/v1.6.7)
-- commit: [ea11a7a](https://github.com/didierfred/SimpleModifyHeaders/tree/ea11a7a52c7e6701f151bae3665cf455b26b94f2)
-- date: 2020-08-31
+
+* version: [1.6.7](https://github.com/didierfred/SimpleModifyHeaders/releases/tag/v1.6.7)
+* commit: [ea11a7a](https://github.com/didierfred/SimpleModifyHeaders/tree/ea11a7a52c7e6701f151bae3665cf455b26b94f2)
+* date: 2020-08-31
 
 ## Summary of [changes](https://github.com/warren-bank/crx-simple-modify-headers/compare/smh-extended/v1.6.7..extended)
 
-- "URL Pattern" _field_ is removed
-  * previously:
-    - held a ["match pattern"](https://developer.chrome.com/extensions/match_patterns)
-    - was used to restrict access by the extension only to matching HTTP traffic
-  * now:
-    - the rules table is applied to all HTTP traffic
-- "Filter URL per rules" _setting_ is removed
-- "When URL contains" _field_
-  * previously:
-    - was active only when the "Filter URL per rules" _setting_ was enabled
-    - held a string
-    - was used to restrict the modification performed by the associated rule to only those URLs that contain the exact substring
-  * now:
-    - is always active
-    - holds a case-insensitive [regular expression](https://perldoc.perl.org/perlre) pattern
-    - is used to restrict the modification performed by the associated rule to only those URLs that match the regex pattern
-    - can be left empty to inherit its value from the closest previous rule that does contain a regex pattern
-- "Header Field Name" _field_ can optionally be chosen from a list of common values
-- "Header Field Name" _field_ can fuzzy match substrings in "delete" rules by ending with the "*" character
-- "Delete All" _button_ removes all rules
-- "Import" _button_ reads rules from an external JSON text file
-  * previously:
-    - imported rules did __replace__ the pre-existing set of rules
-  * now:
-    - imported rules will __append__ to the pre-existing set of rules
-- "Parameters" _button_ is renamed to "Settings"
-- Automatic behavior
+* Configuration:
+  - "URL Pattern" _field_ is removed
+    * previously:
+      - held a ["match pattern"](https://developer.chrome.com/extensions/match_patterns)
+      - was used to restrict access by the extension only to matching HTTP traffic
+    * now:
+      - the rules table is applied to all HTTP traffic
+  - "Filter URL per rules" _setting_ is removed
+  - "When URL contains" _field_
+    * previously:
+      - was active only when the "Filter URL per rules" _setting_ was enabled
+      - held a string
+      - was used to restrict the modification performed by the associated rule to only those URLs that contain the exact substring
+    * now:
+      - is always active
+      - holds a case-insensitive [regular expression](https://perldoc.perl.org/perlre) pattern
+      - is used to restrict the modification performed by the associated rule to only those URLs that match the regex pattern
+      - can be left empty to inherit its value from the closest previous rule that does contain a regex pattern
+  - "Header Field Name" _field_ can optionally be chosen from a list of common values
+  - "Header Field Name" _field_ can fuzzy match substrings in "delete" rules by ending with the "*" character
+  - "Rule Set" feature is added
+    * info:
+      - a "Rule Set" is a named sets of rules
+      - each "Rule Set" can be turned on/off as a unit
+    * "Add" _button_:
+      - dynamically adds a new "Rule Set"
+    * _dropdown_ field:
+      - changes the currently selected "Rule Set"
+  - "Export" _button_ writes rules to an external JSON text file
+    * now:
+      - JSON schema has been changed to support the "Rule Set" feature
+  - "Import" _button_ reads rules from an external JSON text file
+    * previously:
+      - imported rules:
+        * __replaced__ all of the pre-existing rules
+    * now:
+      - imported rules:
+        * __appends__ to "Rule Sets" that already exist
+        * __adds__ "Rule Sets" that do not yet exist
+  - "Delete All" _button_ is added
+    * when clicked, gives the following options:
+      1. All rule sets
+      2. Current rule set
+      3. All lines in current rule set
+  - "Parameters" _button_ is renamed to "Settings"
+* Popup window:
+  - _dropdown_ field:
+     * select one or more "Rule Sets"
+  - "Start" _button_
+     * enables the selected "Rule Sets" globally, in all browser tabs
+  - "Start Tab" _button_
+     * enables the selected "Rule Sets" in only the current browser tab
+     * this feature is only available when no "Rule Sets" are globally enabled
+* Automatic behavior:
   1. always replace `x-simple-modify-headers-${name}` request headers with `${name}`
      - conditions:
        * the extension is either enabled globally, or enabled for the current browser tab
