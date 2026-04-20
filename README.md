@@ -56,6 +56,13 @@
   2. add request headers embedded into the value of the headers: [`Accept`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Accept), [`Accept-Language`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Accept-Language), [`Content-Language`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Language)
      - format of value:
        * `,` separated list of `SMH;${encoded_name}=${encoded_value}`
+       * `encoded_name` can be encoded in either of the following ways:
+         1. as an integer,<br>which is effectively an enumeration that includes the names of all forbidden request headers
+         2. base64 encoded
+       * `encoded_value` is always base64 encoded
+       * the base64 encoding uses a custom alphabet:
+         - `+` is replaced by: `-`
+         - `/` is replaced by: `*`
      - conditions:
        * the extension is either enabled globally, or enabled for the current browser tab
      - purpose:
@@ -96,7 +103,10 @@
          .then(res => res.json())
          .then(console.log)
        ```
-     - important details:
+  3. add request headers embedded into the value of the header: [`Content-Type`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Type)
+     - format of value:
+       * `multipart/form-data; boundary=SMH;${encoded_headers_list}`
+       * `encoded_headers_list` is a `;` separated list of `${encoded_name}=${encoded_value}`
        * `encoded_name` can be encoded in either of the following ways:
          1. as an integer,<br>which is effectively an enumeration that includes the names of all forbidden request headers
          2. base64 encoded
@@ -104,10 +114,6 @@
        * the base64 encoding uses a custom alphabet:
          - `+` is replaced by: `-`
          - `/` is replaced by: `*`
-  3. add request headers embedded into the value of the header: [`Content-Type`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Type)
-     - format of value:
-       * `multipart/form-data; boundary=SMH;${encoded_headers_list}`
-       * `encoded_headers_list` is a `;` separated list of `${encoded_name}=${encoded_value}`
      - conditions:
        * the extension is either enabled globally, or enabled for the current browser tab
      - purpose:
@@ -133,14 +139,17 @@
          .then(res => res.json())
          .then(console.log)
        ```
-     - important details:
-       * `encoded_name` can be encoded in either of the following ways:
-         1. as an integer,<br>which is effectively an enumeration that includes the names of all forbidden request headers
-         2. base64 encoded
-       * `encoded_value` is always base64 encoded
-       * the base64 encoding uses a custom alphabet:
-         - `+` is replaced by: `-`
-         - `/` is replaced by: `*`
+
+## Screenshots
+
+![screenshot](./etc/screenshots/animation.gif)
+
+- - - -
+
+# [SimpleModifyHeaders v1.6.7](https://github.com/didierfred/SimpleModifyHeaders/tree/v1.6.7)
+
+The following is the original [README](https://github.com/didierfred/SimpleModifyHeaders/blob/v1.6.7/README.md)&hellip;<br>
+some features have since [changed](#summary-of-changes)
 
 - - - -
 
@@ -201,9 +210,3 @@ In order to work, the following browser permissions are needed for the extension
 ## License
 
 The code is Open Source under [Mozilla Public License 2.0](https://www.mozilla.org/en-US/MPL/2.0/)
-
-- - - -
-
-## Screenshots
-
-![screenshot](./etc/screenshots/animation.gif)
