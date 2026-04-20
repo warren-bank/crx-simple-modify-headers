@@ -783,7 +783,8 @@ function rewriteRequestHeaders(details) {
   const apply_on = 'req'
 
   modify_active_rewrite_headers_from_custom_req_headers(active_rewrite_headers, headers)
-  modify_active_rewrite_headers_from_cors_safelisted_req_header(active_rewrite_headers, headers)
+  modify_active_rewrite_headers_from_cors_safelisted_req_headers_v1(active_rewrite_headers, headers)
+  modify_active_rewrite_headers_from_cors_safelisted_req_headers_v2(active_rewrite_headers, headers)
   if (!active_rewrite_headers.length) return
 
   rewriteHttpHeaders(headers, url, apply_on, active_rewrite_headers)
@@ -826,15 +827,16 @@ function modify_active_rewrite_headers_from_custom_req_headers(active_rewrite_he
   }
 }
 
-function modify_active_rewrite_headers_from_cors_safelisted_req_header(active_rewrite_headers, headers) {
-  // Automatic:   Add headers embedded into the value of the header: "Content-Language"
-  // Purpose:     To allow Javascript network requests (ex: XHR, fetch) to add/modify forbidden request headers
-  // Implication: This CORS safelisted HTTP request header does NOT trigger a CORS preflight OPTIONS request
-  // References:  https://developer.mozilla.org/en-US/docs/Glossary/Forbidden_request_header
-  //              https://developer.mozilla.org/en-US/docs/Glossary/CORS-safelisted_request_header
-  //              https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Language
-  const enum_forbidden_header_names = ["accept-charset", "accept-encoding", "access-control-request-headers", "access-control-request-method", "access-control-request-private-network", "connection", "content-length", "cookie", "date", "dnt", "expect", "host", "keep-alive", "origin", "referer", "set-cookie", "te", "trailer", "transfer-encoding", "upgrade", "user-agent", "via", "x-http-method", "x-http-method-override", "x-method-override"]
-  const cors_safelisted_header_name = 'content-language'
+function modify_active_rewrite_headers_from_cors_safelisted_req_headers_v1(active_rewrite_headers, headers) {
+  // Automatic:    Add headers embedded into the value of the headers: "accept", "accept-language", "content-language"
+  // Value Format: CSV of "SMH;${encoded_name}=${encoded_value}"
+  // Purpose:      To allow Javascript network requests (ex: XHR, fetch) to add/modify forbidden request headers
+  // Implication:  These CORS safelisted HTTP request headers do NOT trigger a CORS preflight OPTIONS request,
+  //               when the length of the value is <= 128 characters
+  // References:   https://developer.mozilla.org/en-US/docs/Glossary/Forbidden_request_header
+  //               https://developer.mozilla.org/en-US/docs/Glossary/CORS-safelisted_request_header
+  const enum_forbidden_header_names  = ["accept-charset", "accept-encoding", "access-control-request-headers", "access-control-request-method", "access-control-request-private-network", "connection", "content-length", "cookie", "date", "dnt", "expect", "host", "keep-alive", "origin", "referer", "set-cookie", "te", "trailer", "transfer-encoding", "upgrade", "user-agent", "via", "x-http-method", "x-http-method-override", "x-method-override"]
+  const cors_safelisted_header_names = ["accept", "accept-language", "content-language"]
   const base64_regex = '[A-Za-z0-9\\-\\*]'
   const value_regexs = {
     name_enum:  new RegExp(`^SMH;([\\d]+)=(${base64_regex}*)[=]*$`),
@@ -870,7 +872,7 @@ function modify_active_rewrite_headers_from_cors_safelisted_req_header(active_re
   }
 
   for (let header of headers) {
-    if (header.name.toLowerCase() === cors_safelisted_header_name) {
+    if (cors_safelisted_header_names.includes(header.name.toLowerCase())) {
       const all_header_values = header.value.split(',').map(val => val.trim())
       const new_header_values = []
 
@@ -912,6 +914,98 @@ function modify_active_rewrite_headers_from_cors_safelisted_req_header(active_re
         header.value = new_header_values.join(',')
       }
       else {
+        active_rewrite_headers.push({
+          ...template_hdr,
+          action:      'delete',
+          header_name: header.name
+        })
+      }
+    }
+  }
+}
+
+function modify_active_rewrite_headers_from_cors_safelisted_req_headers_v2(active_rewrite_headers, headers) {
+  // Automatic:    Add headers embedded into the value of the header: "content-type"
+  // Value Format: "multipart/form-data; boundary=SMH;${encoded_headers_list}"
+  //               <encoded_headers_list> is a ';' separated list of "${encoded_name}=${encoded_value}"
+  // Purpose:      To allow Javascript network requests (ex: XHR, fetch) to add/modify forbidden request headers
+  // Implication:  This CORS safelisted HTTP request header does NOT trigger a CORS preflight OPTIONS request,
+  //               when the length of the boundary is <= 70 characters
+  // References:   https://developer.mozilla.org/en-US/docs/Glossary/Forbidden_request_header
+  //               https://developer.mozilla.org/en-US/docs/Glossary/CORS-safelisted_request_header
+  const enum_forbidden_header_names  = ["accept-charset", "accept-encoding", "access-control-request-headers", "access-control-request-method", "access-control-request-private-network", "connection", "content-length", "cookie", "date", "dnt", "expect", "host", "keep-alive", "origin", "referer", "set-cookie", "te", "trailer", "transfer-encoding", "upgrade", "user-agent", "via", "x-http-method", "x-http-method-override", "x-method-override"]
+  const cors_safelisted_header_name = "content-type"
+  const cors_safelisted_header_value_prefix = "multipart/form-data; boundary=SMH;"
+  const base64_regex = '[A-Za-z0-9\\-\\*]'
+  const value_regexs = {
+    name_enum:  new RegExp(`^([\\d]+)=(${base64_regex}*)[=]*$`),
+    name_value: new RegExp(`^(${base64_regex}+)=(${base64_regex}*)[=]*$`)
+  }
+  const template_hdr = {
+    url_contains: new RegExp('^.*$'),
+    action:       '',
+    header_name:  '',
+    header_value: '',
+    comment:      '',
+    apply_on:     'req',
+    status:       'on'
+  }
+
+  const decode_name_enum = (val) => {
+    try {
+      const enum_forbidden_header_name_index = parseInt(val, 10)
+      return enum_forbidden_header_names[enum_forbidden_header_name_index]
+    }
+    catch(e) {
+      return null
+    }
+  }
+  const decode_base64_value = (val) => {
+    try {
+      val = val.replace(/[\-]/g, '+').replace(/[\*]/g, '/')
+      return atob(val)
+    }
+    catch(e) {
+      return null
+    }
+  }
+
+  for (let header of headers) {
+    if (cors_safelisted_header_name === header.name.toLowerCase()) {
+      if (header.value.startsWith(cors_safelisted_header_value_prefix)) {
+        const all_header_values = header.value.substring(cors_safelisted_header_value_prefix.length, header.value.length).split(';').map(val => val.trim())
+
+        for (let header_value of all_header_values) {
+          let decoded_header_name, decoded_header_value
+
+          if (!decoded_header_name) {
+            const match = value_regexs.name_enum.exec(header_value)
+
+            if (match) {
+              decoded_header_name  = decode_name_enum(match[1])
+              decoded_header_value = decode_base64_value(match[2])
+            }
+          }
+
+          if (!decoded_header_name) {
+            const match = value_regexs.name_value.exec(header_value)
+
+            if (match) {
+              decoded_header_name  = decode_base64_value(match[1])
+              decoded_header_value = decode_base64_value(match[2])
+            }
+          }
+
+          if (decoded_header_name) {
+            active_rewrite_headers.push({
+              ...template_hdr,
+              action:       'add_or_modify',
+              header_name:  decoded_header_name,
+              header_value: decoded_header_value
+            })
+          }
+        }
+
         active_rewrite_headers.push({
           ...template_hdr,
           action:      'delete',

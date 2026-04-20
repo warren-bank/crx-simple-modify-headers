@@ -1,0 +1,177 @@
+How to set CORS safelisted HTTP request headers
+without triggering a CORS preflight request...
+
+--------------------------------------------------------------------------------
+
+no preflight:
+=============
+
+fetch('https://www.youtube.com/watch?v=qhKci8jY510', {headers: {"content-language": "SMH;Aa0-*=Aa0-*,SMH;Bb1-*=Bb1-*"}})
+.then(res => res.json())
+.then(console.log)
+
+fetch('https://www.youtube.com/watch?v=qhKci8jY510', {headers: {"accept": "SMH/Aa0-*=Aa0-*,SMH/Bb1-*=Bb1-*"}})
+.then(res => res.json())
+.then(console.log)
+
+--------------------------------------------------------------------------------
+
+has preflight:
+==============
+
+fetch('https://www.youtube.com/watch?v=qhKci8jY510', {headers: {"content-language": "SMH;dXNlci1hZ2VudA=TW96aWxsYS81LjAgKE1hY2ludG9zaDsgSW50ZWwgTWFjIE9TIFggMTBfMTVfNykgQXBwbGVXZWJLaXQvNjA1LjEuMTUgKEtIVE1MLCBsaWtlIEdlY2tvKSBWZXJzaW9uLzE1LjUgU2FmYXJpLzYwNS4xLjE1LGd6aXAoZ2ZlKQ,SMH;c2VjLWZldGNoLW1vZGU=bmF2aWdhdGU,SMH;YWNjZXB0LWVuY29kaW5n=Z3ppcCwgZGVmbGF0ZQ"}})
+.then(res => res.json())
+.then(console.log)
+
+fetch('https://www.youtube.com/watch?v=qhKci8jY510', {headers: {"accept": "SMH/dXNlci1hZ2VudA=TW96aWxsYS81LjAgKE1hY2ludG9zaDsgSW50ZWwgTWFjIE9TIFggMTBfMTVfNykgQXBwbGVXZWJLaXQvNjA1LjEuMTUgKEtIVE1MLCBsaWtlIEdlY2tvKSBWZXJzaW9uLzE1LjUgU2FmYXJpLzYwNS4xLjE1LGd6aXAoZ2ZlKQ,SMH/c2VjLWZldGNoLW1vZGU=bmF2aWdhdGU,SMH/YWNjZXB0LWVuY29kaW5n=Z3ppcCwgZGVmbGF0ZQ"}})
+.then(res => res.json())
+.then(console.log)
+
+--------------------------------------------------------------------------------
+
+no preflight (header value is <= 128 chars):
+============================================
+
+fetch('https://www.youtube.com/watch?v=qhKci8jY510', {headers: {"content-language": "SMH;dXNlci1hZ2VudA=TW96aWxsYS81LjAgKE1hY2ludG9zaDsgSW50ZWwgTWFjIE9TIFggMTBfMTVfNykgQXBwbGVXZWJLaXQvNjA1LjEuMTUgKEtIVE1MLCBsaWt"}})
+.then(res => res.json())
+.then(console.log)
+
+fetch('https://www.youtube.com/watch?v=qhKci8jY510', {headers: {"accept": "SMH/dXNlci1hZ2VudA=TW96aWxsYS81LjAgKE1hY2ludG9zaDsgSW50ZWwgTWFjIE9TIFggMTBfMTVfNykgQXBwbGVXZWJLaXQvNjA1LjEuMTUgKEtIVE1MLCBsaWt"}})
+.then(res => res.json())
+.then(console.log)
+
+--------------------------------------------------------------------------------
+
+has preflight (header value is > 128 chars):
+============================================
+
+fetch('https://www.youtube.com/watch?v=qhKci8jY510', {headers: {"content-language": "SMH;dXNlci1hZ2VudA=TW96aWxsYS81LjAgKE1hY2ludG9zaDsgSW50ZWwgTWFjIE9TIFggMTBfMTVfNykgQXBwbGVXZWJLaXQvNjA1LjEuMTUgKEtIVE1MLCBsaWtaWt"}})
+.then(res => res.json())
+.then(console.log)
+
+fetch('https://www.youtube.com/watch?v=qhKci8jY510', {headers: {"accept": "SMH/dXNlci1hZ2VudA=TW96aWxsYS81LjAgKE1hY2ludG9zaDsgSW50ZWwgTWFjIE9TIFggMTBfMTVfNykgQXBwbGVXZWJLaXQvNjA1LjEuMTUgKEtIVE1MLCBsaWtaWt"}})
+.then(res => res.json())
+.then(console.log)
+
+--------------------------------------------------------------------------------
+// for each of: "accept", "accept-language", "content-language", "content-type", "range"
+//   test same value: 1 encoded header
+
+no preflight (header value is <= 128 chars):
+============================================
+
+// OK:
+fetch('https://www.youtube.com/watch?v=qhKci8jY510', {headers: {"accept-language": "SMH;dXNlci1hZ2VudA=TW96aWxsYS81LjAgKE1hY2ludG9zaDsgSW50ZWwgTWFjIE9TIFggMTBfMTVfNykgQXBwbGVXZWJLaXQvNjA1LjEuMTUgKEtIVE1MLCBsaWt"}})
+.then(res => res.json())
+.then(console.log)
+
+// OK:
+fetch('https://www.youtube.com/watch?v=qhKci8jY510', {headers: {"content-language": "SMH;dXNlci1hZ2VudA=TW96aWxsYS81LjAgKE1hY2ludG9zaDsgSW50ZWwgTWFjIE9TIFggMTBfMTVfNykgQXBwbGVXZWJLaXQvNjA1LjEuMTUgKEtIVE1MLCBsaWt"}})
+.then(res => res.json())
+.then(console.log)
+
+// OK:
+fetch('https://www.youtube.com/watch?v=qhKci8jY510', {headers: {"accept": "SMH;dXNlci1hZ2VudA=TW96aWxsYS81LjAgKE1hY2ludG9zaDsgSW50ZWwgTWFjIE9TIFggMTBfMTVfNykgQXBwbGVXZWJLaXQvNjA1LjEuMTUgKEtIVE1MLCBsaWt"}})
+.then(res => res.json())
+.then(console.log)
+
+// PREFLIGHT:
+fetch('https://www.youtube.com/watch?v=qhKci8jY510', {headers: {"content-type": "SMH;dXNlci1hZ2VudA=TW96aWxsYS81LjAgKE1hY2ludG9zaDsgSW50ZWwgTWFjIE9TIFggMTBfMTVfNykgQXBwbGVXZWJLaXQvNjA1LjEuMTUgKEtIVE1MLCBsaWt"}})
+.then(res => res.json())
+.then(console.log)
+
+// PREFLIGHT:
+fetch('https://www.youtube.com/watch?v=qhKci8jY510', {headers: {"range": "SMH;dXNlci1hZ2VudA=TW96aWxsYS81LjAgKE1hY2ludG9zaDsgSW50ZWwgTWFjIE9TIFggMTBfMTVfNykgQXBwbGVXZWJLaXQvNjA1LjEuMTUgKEtIVE1MLCBsaWt"}})
+.then(res => res.json())
+.then(console.log)
+
+--------------------------------------------------------------------------------
+// for each of: "accept", "accept-language", "content-language"
+//   re-test same value: 2 encoded headers w/ CSV
+
+// OK:
+fetch('https://www.youtube.com/watch?v=qhKci8jY510', {headers: {"accept-language": "SMH;dXNlci1hZ2VudA=TW96aWxsYS81Lj,SMH;AgKE1hY2ludG9zaDsgSW50=ZWwgTWFjIE9TIFggMTBfMTVfNykgQXBwbGVXZWJLaXQvNjA1LjEuMTUgKEtIVE1ML"}})
+.then(res => res.json())
+.then(console.log)
+
+// OK:
+fetch('https://www.youtube.com/watch?v=qhKci8jY510', {headers: {"content-language": "SMH;dXNlci1hZ2VudA=TW96aWxsYS81Lj,SMH;AgKE1hY2ludG9zaDsgSW50=ZWwgTWFjIE9TIFggMTBfMTVfNykgQXBwbGVXZWJLaXQvNjA1LjEuMTUgKEtIVE1ML"}})
+.then(res => res.json())
+.then(console.log)
+
+// OK:
+fetch('https://www.youtube.com/watch?v=qhKci8jY510', {headers: {"accept": "SMH;dXNlci1hZ2VudA=TW96aWxsYS81Lj,SMH;AgKE1hY2ludG9zaDsgSW50=ZWwgTWFjIE9TIFggMTBfMTVfNykgQXBwbGVXZWJLaXQvNjA1LjEuMTUgKEtIVE1ML"}})
+.then(res => res.json())
+.then(console.log)
+
+--------------------------------------------------------------------------------
+// test "content-type" w/ various value formats
+//   https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Type
+
+// PREFLIGHT:
+fetch('https://www.youtube.com/watch?v=qhKci8jY510', {headers: {"content-type": "SMH/*;dXNlci1hZ2VudA=TW96aWxsYS81LjAgKE1hY2ludG9zaDsgSW50ZWwgTWFjIE9TIFggMTBfMTVfNykgQXBwbGVXZWJLaXQvNjA1LjEuMTUgKEtIVE1MLCBsa"}})
+.then(res => res.json())
+.then(console.log)
+
+// PREFLIGHT:
+fetch('https://www.youtube.com/watch?v=qhKci8jY510', {headers: {"content-type": "text/SMH;dXNlci1hZ2VudA=TW96aWxsYS81LjAgKE1hY2ludG9zaDsgSW50ZWwgTWFjIE9TIFggMTBfMTVfNykgQXBwbGVXZWJLaXQvNjA1LjEuMTUgKEtIVE1"}})
+.then(res => res.json())
+.then(console.log)
+
+// PREFLIGHT:
+fetch('https://www.youtube.com/watch?v=qhKci8jY510', {headers: {"content-type": "text/SMH; boundary=dXNlci1hZ2VudA=TW96aWxsYS81LjAgKE1hY2ludG9zaDsgSW50ZWwgTWFjIE9TIFggMTBfMTVfNykgQXBwbGVXZWJLaXQvNjA1LjEuMT"}})
+.then(res => res.json())
+.then(console.log)
+
+// PREFLIGHT:
+fetch('https://www.youtube.com/watch?v=qhKci8jY510', {headers: {"content-type": "text/SMH; boundary=dXNlci1hZ2VudATW96aWxsYS81LjAgKE1hY2ludG9zaDsgSW50ZWwgTWFjIE9TIFggMTBfMTVfNykgQXBwbGVXZWJLaXQvNjA1LjEuMT"}})
+.then(res => res.json())
+.then(console.log)
+
+// PREFLIGHT:
+fetch('https://www.youtube.com/watch?v=qhKci8jY510', {headers: {"content-type": "text/SMH; charset=dXNlci1hZ2VudA=TW96aWxsYS81LjAgKE1hY2ludG9zaDsgSW50ZWwgTWFjIE9TIFggMTBfMTVfNykgQXBwbGVXZWJLaXQvNjA1LjEuMT"}})
+.then(res => res.json())
+.then(console.log)
+
+// PREFLIGHT:
+fetch('https://www.youtube.com/watch?v=qhKci8jY510', {headers: {"content-type": "*/*; boundary=SMH=dXNlci1hZ2VudA=TW96aWxsYS81LjAgKE1hY2ludG9zaDsgSW50ZWwgTWFjIE9TIFggMTBfMTVfNykgQXBwbGVXZWJLaXQvNjA1LjEuMT"}})
+.then(res => res.json())
+.then(console.log)
+
+// PREFLIGHT:
+fetch('https://www.youtube.com/watch?v=qhKci8jY510', {headers: {"content-type": "multipart/form-data; boundary=SMH=dXNlci1hZ2VudA=TW96aWxsYS81LjAgKE1hY2ludG9zaDsgSW50ZWwgTWFjIE9TIFggMTBfMTVfNykgQXBwbGVXZWJLaXQvNjA1LjEuMT"}})
+.then(res => res.json())
+.then(console.log)
+
+// OK (boundary is <= 70 chars):
+fetch('https://www.youtube.com/watch?v=qhKci8jY510', {headers: {"content-type": "multipart/form-data; boundary=SMH;dXNlci1hZ2VudA=TW96aWxsYS81LjAgKE1hY2ludG9zaDsgSW50ZWwgTWFjIE9TIF"}})
+.then(res => res.json())
+.then(console.log)
+
+// PREFLIGHT (boundary is <= 70 chars) w/ CSV:
+fetch('https://www.youtube.com/watch?v=qhKci8jY510', {headers: {"content-type": "multipart/form-data; boundary=SMH;dXNlci1hZ2VudA=TW96aWxsYS81L,jAgKE1hY2ludG9=zaDsgSW50ZWwgTWFjIE9T"}})
+.then(res => res.json())
+.then(console.log)
+
+// OK (boundary is <= 70 chars) w/ multiple values separated by ';' character:
+fetch('https://www.youtube.com/watch?v=qhKci8jY510', {headers: {"content-type": "multipart/form-data; boundary=SMH;dXNlci1hZ2VudA=TW96aWxsYS81L;jAgKE1hY2ludG9=zaDsgSW50ZWwgTWFjIE9T"}})
+.then(res => res.json())
+.then(console.log)
+
+--------------------------------------------------------------------------------
+// test "range" w/ various value formats
+//   https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Range
+// tl;dr
+//   this CORS safelisted header cannot be used to embed encoded value(s)
+
+// PREFLIGHT:
+fetch('https://www.youtube.com/watch?v=qhKci8jY510', {headers: {"range": "SMH=0-100"}})
+.then(res => res.json())
+.then(console.log)
+
+// PREFLIGHT:
+fetch('https://www.youtube.com/watch?v=qhKci8jY510', {headers: {"range": "bytes=SMH;0-100"}})
+.then(res => res.json())
+.then(console.log)
+
+--------------------------------------------------------------------------------

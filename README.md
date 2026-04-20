@@ -53,13 +53,15 @@
          .then(res => res.json())
          .then(console.log)
        ```
-  2. add request headers embedded into the value of the header: [`Content-Language`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Language)
+  2. add request headers embedded into the value of the headers: [`Accept`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Accept), [`Accept-Language`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Accept-Language), [`Content-Language`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Language)
+     - format of value:
+       * `,` separated list of `SMH;${encoded_name}=${encoded_value}`
      - conditions:
        * the extension is either enabled globally, or enabled for the current browser tab
      - purpose:
        * to allow Javascript network requests (ex: XHR, fetch) to add/modify [forbidden request headers](https://developer.mozilla.org/en-US/docs/Glossary/Forbidden_request_header)
      - implications:
-       * the presence of this [CORS safelisted HTTP request header](https://developer.mozilla.org/en-US/docs/Glossary/CORS-safelisted_request_header) will _NOT_ trigger a [CORS preflight OPTIONS request](https://developer.mozilla.org/en-US/docs/Glossary/Preflight_request)&hellip; at the cost of added complexity
+       * the presence of these [CORS safelisted HTTP request headers](https://developer.mozilla.org/en-US/docs/Glossary/CORS-safelisted_request_header) will _NOT_ trigger a [CORS preflight OPTIONS request](https://developer.mozilla.org/en-US/docs/Glossary/Preflight_request), when the length of the value is &lt;= 128 characters
      - example &num;1:
        ```javascript
          const enum_forbidden_header_names = ["accept-charset", "accept-encoding", "access-control-request-headers", "access-control-request-method", "access-control-request-private-network", "connection", "content-length", "cookie", "date", "dnt", "expect", "host", "keep-alive", "origin", "referer", "set-cookie", "te", "trailer", "transfer-encoding", "upgrade", "user-agent", "via", "x-http-method", "x-http-method-override", "x-method-override"]
@@ -67,10 +69,14 @@
          const encode_name = (name) => enum_forbidden_header_names.indexOf(name.toLowerCase())
          const encode_value = (val) => btoa(val).replace(/=+$/, '').replace(/[\+]/g, '-').replace(/[\/]/g, '*')
 
-         const headers = new Headers()
-         headers.append("content-language", "en-US")
-         headers.append("content-language", "SMH;" + encode_name("origin")  + "=" + encode_value("https://www.example.com"))
-         headers.append("content-language", "SMH;" + encode_name("referer") + "=" + encode_value("https://foo.example.com/bar"))
+         const cors_safelisted_header_values = []
+         cors_safelisted_header_values.push("en-US")
+         cors_safelisted_header_values.push("SMH;" + encode_name("origin")  + "=" + encode_value("https://www.example.com"))
+         cors_safelisted_header_values.push("SMH;" + encode_name("referer") + "=" + encode_value("https://foo.example.com/bar"))
+         cors_safelisted_header_values.push("SMH;" + encode_value("x-foo")  + "=" + encode_value("bar"))
+
+         const headers = {}
+         headers["content-language"] = cors_safelisted_header_values.join(',')
 
          fetch('http://httpbin.org/headers', {headers})
          .then(res => res.json())
@@ -84,16 +90,54 @@
          headers.append("content-language", "en-US")
          headers.append("content-language", "SMH;" + encode_value("origin")  + "=" + encode_value("https://www.example.com"))
          headers.append("content-language", "SMH;" + encode_value("referer") + "=" + encode_value("https://foo.example.com/bar"))
+         headers.append("content-language", "SMH;" + encode_value("x-foo")   + "=" + encode_value("bar"))
 
          fetch('http://httpbin.org/headers', {headers})
          .then(res => res.json())
          .then(console.log)
        ```
      - important details:
-       * the name of each embedded header can be encoded in any of the following ways:
-         1. as an integer,<br>which is effectively an enumeration for the names of forbidden request headers
+       * `encoded_name` can be encoded in either of the following ways:
+         1. as an integer,<br>which is effectively an enumeration that includes the names of all forbidden request headers
          2. base64 encoded
-       * the value of each embedded header is always base64 encoded
+       * `encoded_value` is always base64 encoded
+       * the base64 encoding uses a custom alphabet:
+         - `+` is replaced by: `-`
+         - `/` is replaced by: `*`
+  3. add request headers embedded into the value of the header: [`Content-Type`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Type)
+     - format of value:
+       * `multipart/form-data; boundary=SMH;${encoded_headers_list}`
+       * `encoded_headers_list` is a `;` separated list of `${encoded_name}=${encoded_value}`
+     - conditions:
+       * the extension is either enabled globally, or enabled for the current browser tab
+     - purpose:
+       * to allow Javascript network requests (ex: XHR, fetch) to add/modify [forbidden request headers](https://developer.mozilla.org/en-US/docs/Glossary/Forbidden_request_header)
+     - implications:
+       * the presence of this [CORS safelisted HTTP request header](https://developer.mozilla.org/en-US/docs/Glossary/CORS-safelisted_request_header) will _NOT_ trigger a [CORS preflight OPTIONS request](https://developer.mozilla.org/en-US/docs/Glossary/Preflight_request), when the length of the boundary is &lt;= 70 characters
+     - example:
+       ```javascript
+         const enum_forbidden_header_names = ["accept-charset", "accept-encoding", "access-control-request-headers", "access-control-request-method", "access-control-request-private-network", "connection", "content-length", "cookie", "date", "dnt", "expect", "host", "keep-alive", "origin", "referer", "set-cookie", "te", "trailer", "transfer-encoding", "upgrade", "user-agent", "via", "x-http-method", "x-http-method-override", "x-method-override"]
+
+         const encode_name = (name) => enum_forbidden_header_names.indexOf(name.toLowerCase())
+         const encode_value = (val) => btoa(val).replace(/=+$/, '').replace(/[\+]/g, '-').replace(/[\/]/g, '*')
+
+         const cors_safelisted_header_values = []
+         cors_safelisted_header_values.push(encode_name("origin")  + "=" + encode_value("https://www.example.com"))
+         cors_safelisted_header_values.push(encode_name("referer") + "=" + encode_value("https://foo.example.com/bar"))
+         cors_safelisted_header_values.push(encode_value("x-foo")  + "=" + encode_value("bar"))
+
+         const headers = {}
+         headers["content-type"] = 'multipart/form-data; boundary=SMH;' + cors_safelisted_header_values.join(';')
+
+         fetch('http://httpbin.org/headers', {headers})
+         .then(res => res.json())
+         .then(console.log)
+       ```
+     - important details:
+       * `encoded_name` can be encoded in either of the following ways:
+         1. as an integer,<br>which is effectively an enumeration that includes the names of all forbidden request headers
+         2. base64 encoded
+       * `encoded_value` is always base64 encoded
        * the base64 encoding uses a custom alphabet:
          - `+` is replaced by: `-`
          - `/` is replaced by: `*`
